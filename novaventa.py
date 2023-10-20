@@ -4,6 +4,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoSuchElementException
 import time
 import sqlite3
 import pandas as pd
@@ -47,23 +48,27 @@ class NovaVenta:
         self.driver = webdriver.Chrome()
         self.wait = WebDriverWait(self.driver, 10)
 
-        # Iniciar sesión de inmediato
+        # Solicitar información de inicio de sesión al usuario
+        self.username = input("Ingrese su nombre de usuario: ")
+        self.password = input("Ingrese su contraseña: ")
+
+        # Iniciar sesión
+        self.login()
+
+    def login(self):
         self.driver.get("https://comercio.novaventa.com.co/nautilusb2bstorefront/nautilus/es/COP/login")
         
         # Espera hasta que los campos de usuario y contraseña estén presentes
-        username_field = self.wait.until(EC.presence_of_element_located((By.ID, "j_username")))
-        password_field = self.wait.until(EC.presence_of_element_located((By.ID, "j_password")))
-
-        # Introduce la información de inicio de sesión
-        username_field.send_keys("1118805499")
-        password_field.send_keys("malka18")
-
-        # Encuentra el botón de inicio de sesión y haz clic en él
-        login_button = self.wait.until(EC.presence_of_element_located((By.ID, "btn-login")))
-        login_button.click()
-
-        # Espera a que la página principal cargue después del inicio de sesión
-        self.wait.until(EC.presence_of_element_located((By.XPATH, "//a[contains(@href, 'homepage')]")))
+        try:
+            username_field = self.wait.until(EC.presence_of_element_located((By.ID, "j_username")))
+            password_field = self.wait.until(EC.presence_of_element_located((By.ID, "j_password")))
+        except NoSuchElementException:
+            logging.error("No se encontraron los campos de inicio de sesión.")
+            return
+        
+        username_field.send_keys(self.username)
+        password_field.send_keys(self.password)
+        password_field.send_keys(Keys.RETURN)
     
     def retry(self, function, attempts=3, delay=2):
         for i in range(attempts):
@@ -86,6 +91,7 @@ class NovaVenta:
 
 
     def process_orders(self, product_codes):
+        conn = None
         try:
             # Conéctate a la base de datos
             conn = sqlite3.connect('novaventa.db')
